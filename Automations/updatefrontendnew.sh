@@ -1,22 +1,25 @@
 #!/bin/bash
 
-# Set the Instance ID and path to the .env file
-INSTANCE_ID="i-030da7d31a1dbbffc"
+INSTANCE_ID="i-0f75c195300285cd2"
 
-# Retrieve the public IP address of the specified EC2 instance
 ipv4_address=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
 
-# Path to the .env file
 file_to_find="../frontend/.env.docker"
 
-# Check the current VITE_API_PATH in the .env file
-current_url=$(cat $file_to_find)
+# If file does NOT exist, create it
+if [ ! -f "$file_to_find" ]; then
+    echo 'VITE_API_PATH=""' > $file_to_find
+fi
 
-# Update the .env file if the IP address has changed
-if [[ "$current_url" != "VITE_API_PATH=\"http://${ipv4_address}:31100\"" ]]; then
-    if [ -f $file_to_find ]; then
-        sed -i -e "s|VITE_API_PATH.*|VITE_API_PATH=\"http://${ipv4_address}:31100\"|g" $file_to_find
-    else
-        echo "ERROR: File not found."
-    fi
+# Extract only the VITE_API_PATH line
+current_url=$(grep "^VITE_API_PATH" $file_to_find)
+
+new_url="VITE_API_PATH=\"http://${ipv4_address}:31100\""
+
+# Update only if IP changed
+if [[ "$current_url" != "$new_url" ]]; then
+    sed -i -E "s|^VITE_API_PATH=.*|$new_url|g" $file_to_find
+    echo "Updated .env.docker → $new_url"
+else
+    echo "No update needed"
 fi
